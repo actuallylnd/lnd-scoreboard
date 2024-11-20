@@ -1,5 +1,5 @@
 # lnd-scoreboard
-A simple script for scoreboard with some futures like
+A simple script for scoreboard
 
 # Features
 - Driver have other ID color

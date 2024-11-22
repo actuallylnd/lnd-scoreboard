@@ -1,8 +1,15 @@
 local isIdDisplaying = false
 local ActiveKey = 20
-local playersCheckingID = {}
 local visibleDistance = 25.0
 local aboveHead = 1.2
+local extendedVisibleDistance = 45.0
+local playerGroup = nil
+local playersCheckingID = {}
+
+local allowedGroups = {
+    admin = true,
+    best = true,
+}
 
 TextConfig = {
     scale = {0.5, 0.5},
@@ -16,7 +23,7 @@ local ActiveColor = {84, 5, 163, 255}
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(5)
+        Citizen.Wait(0)
 
         if IsControlPressed(0, ActiveKey) then
             if not isIdDisplaying then
@@ -34,8 +41,7 @@ Citizen.CreateThread(function()
             local playerPed = PlayerPedId()
             local playerCoords = GetEntityCoords(playerPed)
 
-            local color = TextConfig.color
-
+            local color = ActiveColor
             local vehicle = GetVehiclePedIsIn(playerPed, false)
             if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
                 color = InCarColor
@@ -43,53 +49,52 @@ Citizen.CreateThread(function()
 
             DrawPlayerId(playerCoords.x, playerCoords.y, playerCoords.z + aboveHead, GetPlayerServerId(PlayerId()), color)
 
+            if playerGroup and allowedGroups[playerGroup] then
+                visibleDistance = extendedVisibleDistance
+            end
+
             for _, player in ipairs(GetActivePlayers()) do
                 local targetPed = GetPlayerPed(player)
                 local targetCoords = GetEntityCoords(targetPed)
                 local distance = #(playerCoords - targetCoords)
-            
+
                 if distance < visibleDistance and playerPed ~= targetPed then
-                    if HasEntityClearLosToEntity(playerPed, targetPed, 17) then
-                        local color = TextConfig.color
-            
-                        local vehicle = GetVehiclePedIsIn(targetPed, false)
-                        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == targetPed then
-                            color = InCarColor
-                        end
-            
+                    local color = TextConfig.color
+                    local vehicle = GetVehiclePedIsIn(targetPed, false)
+                    if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == targetPed then
+                        color = InCarColor
+                    end
+
+                    if playerGroup and allowedGroups[playerGroup] then
+                        DrawPlayerId(targetCoords.x, targetCoords.y, targetCoords.z + aboveHead, GetPlayerServerId(player), color)
+                    elseif HasEntityClearLosToEntity(playerPed, targetPed, 17) then
                         DrawPlayerId(targetCoords.x, targetCoords.y, targetCoords.z + aboveHead, GetPlayerServerId(player), color)
                     end
                 end
             end
-            
         end
 
         for serverId, _ in pairs(playersCheckingID) do
+            if serverId ~= GetPlayerServerId(PlayerId()) then
+                local targetPed = GetPlayerPed(GetPlayerFromServerId(serverId))
+                if DoesEntityExist(targetPed) then
+                    local targetCoords = GetEntityCoords(targetPed)
+                    local playerCoords = GetEntityCoords(PlayerPedId())
+                    local distance = #(playerCoords - targetCoords)
 
-            -- if serverId ~= GetPlayerServerId(PlayerId()) then
-            --     local targetPed = GetPlayerPed(GetPlayerFromServerId(serverId))
-            --     local targetCoords = GetEntityCoords(targetPed)
-            --     local playerCoords = GetEntityCoords(PlayerPedId())
-            --     local distance = #(playerCoords - targetCoords)
-    
-            --     color =  {84, 5, 163, 255}
-            --     if distance < visibleDistance then
-            --         DrawPlayerId(targetCoords.x, targetCoords.y, targetCoords.z + aboveHead, serverId, ActiveColor)
-            --     end
-            -- end
+                    if distance < visibleDistance then
+                        local color = ActiveColor
+                        if playerGroup and allowedGroups[playerGroup] then
+                            visibleDistance = extendedVisibleDistance
+                        end
 
-
-            local targetPed = GetPlayerPed(GetPlayerFromServerId(serverId))
-            local targetCoords = GetEntityCoords(targetPed)
-            local playerCoords = GetEntityCoords(PlayerPedId())
-            local distance = #(playerCoords - targetCoords)
-            
-            if distance < visibleDistance then
-                if HasEntityClearLosToEntity(PlayerPedId(), targetPed, 17) then
-                    DrawPlayerId(targetCoords.x, targetCoords.y, targetCoords.z + aboveHead, serverId, ActiveColor)
+                        if HasEntityClearLosToEntity(PlayerPedId(), targetPed, 17) then
+                            DrawPlayerId(targetCoords.x, targetCoords.y, targetCoords.z + aboveHead, serverId, color)
+                        end
+                    end
                 end
             end
-        end
+        end        
     end
 end)
 
@@ -113,4 +118,9 @@ end
 RegisterNetEvent("lnd-scoreboard:updateCheckers")
 AddEventHandler("lnd-scoreboard:updateCheckers", function(checkingPlayers)
     playersCheckingID = checkingPlayers
+end)
+
+RegisterNetEvent("lnd-scoreboard:updateGroup")
+AddEventHandler("lnd-scoreboard:updateGroup", function(group)
+    playerGroup = group
 end)

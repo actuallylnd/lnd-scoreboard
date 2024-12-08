@@ -1,6 +1,5 @@
 local isIdDisplaying = false
 local ActiveKey = 20
-local aboveHead = 1.0
 
 local visibleDistance = 25.0
 local extendedDistance = 45.0
@@ -25,11 +24,11 @@ local checkingPlayers = {}
 
 
 function CheckState(state)
-    TriggerServerEvent("lnd-scoreboard:checkState", state)
+    TriggerServerEvent("coco-scoreboard:checkState", state)
 end
 
-RegisterNetEvent("lnd-scoreboard:updateCheckers")
-AddEventHandler("lnd-scoreboard:updateCheckers", function(updatedCheckers, group)
+RegisterNetEvent("coco-scoreboard:updateCheckers")
+AddEventHandler("coco-scoreboard:updateCheckers", function(updatedCheckers, group)
     checkingPlayers = updatedCheckers
     playerGroup = group
 end)
@@ -84,15 +83,15 @@ Citizen.CreateThread(function()
     
                     if distance < visibleDistance then
                         local color = TextConfig.color
-    
-                        local vehicle = cache.vehicle or 0
-                        if vehicle ~= 0 and cache.seat == -1 then
+
+                        local targetVehicle = GetVehiclePedIsIn(targetPed, false)
+                        local isDriver = (GetPedInVehicleSeat(targetVehicle, -1) == targetPed)
+
+                        if targetVehicle ~= 0 and isDriver then
                             color = InCarColor
+                        elseif targetVehicle ~= 0 then
+                            color = TextConfig.color
                         end
-                        
-                        -- if checkingPlayers[GetPlayerServerId(player)] then
-                        --     color = ActiveColor
-                        -- end
                         
                         if HasEntityClearLosToEntity(playerPed, targetPed, 17) then
                             DrawPlayerId(targetPed, GetPlayerServerId(player), color)
@@ -101,16 +100,20 @@ Citizen.CreateThread(function()
                 end
             end
         end
-
     end
 end)
 
-function DrawPlayerId(ped, id, color)
-    local headBone = 128
-    local headCoords = GetPedBoneCoords(ped, headBone, 0.0, 0.0, aboveHead)
 
-    SetDrawOrigin(headCoords.x, headCoords.y, headCoords.z, 0)
-    SetTextScale(TextConfig.scale[1], TextConfig.scale[2])
+function DrawPlayerId(ped, id, color)
+    local headBone = 31086
+    local headCoords = GetPedBoneCoords(ped, headBone, -0.2, 0.0, 0.0)
+
+    local scale = (1 / #(GetGameplayCamCoords() - vec3(headCoords.x, headCoords.y, headCoords.z))) * 1.4
+    local fov = (1 / GetGameplayCamFov()) * 100
+    scale = scale * fov
+
+    SetDrawOrigin(headCoords.x, headCoords.y, headCoords.z + 0.7, 0)
+    SetTextScale(1.0 * scale, 1.55 * scale)
     SetTextFont(TextConfig.font)
     SetTextColour(color[1], color[2], color[3], color[4])
     SetTextEntry('STRING')
